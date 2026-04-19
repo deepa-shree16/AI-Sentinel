@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Sentinel | Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border-glass);
+            overflow-y: auto;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            border-radius: 10px;
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: 0.2s;
+        }
+
+        .nav-item i {
+            width: 24px;
+            margin-right: 12px;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: var(--glass-accent);
+            color: var(--primary);
+        }
+
+        /* Main Chat */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .chat-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-glass);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 12px 18px;
+            border-radius: 12px;
+            line-height: 1.5;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .msg-user {
+            align-self: flex-end;
+            background: var(--primary);
+            color: white;
+            border-bottom-right-radius: 2px;
+        }
+
+        .msg-ai {
+            align-self: flex-start;
+            background: var(--bg-card);
+            border-bottom-left-radius: 2px;
+        }
+
+        /* Markdown Styling inside messages */
+        .message ul,
+        .message ol {
+            margin-left: 20px;
+            margin-bottom: 10px;
+        }
+
+        .message code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        .message pre {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+
+        .message p {
+            margin-bottom: 8px;
+        }
+
+        .message h1,
+        .message h2,
+        .message h3 {
+            margin: 10px 0;
+            font-size: 1.1rem;
+        }
+
+        /* Input Bar */
+        .typing-area {
+            padding: 24px;
+            border-top: 1px solid var(--border-glass);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .input-bar-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 16px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-glass);
+        }
+
+        .input-bar-container textarea {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: white;
+            padding: 10px 0;
+            resize: none;
+            outline: none;
+            min-height: 40px;
+            font-family: inherit;
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 16px;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+        }
+
+        .action-btns i {
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .action-btns i:hover {
+            color: var(--primary);
+        }
+
+        /* Interception Modal */
+        #interceptor {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .intercept-card {
+            max-width: 500px;
+            padding: 30px;
+            border: 1px solid var(--danger);
+            text-align: center;
+        }
+
+        .intercept-card h2 {
+            color: var(--danger);
+            margin-bottom: 20px;
+        }
+
+        .intercept-card p {
+            margin-bottom: 25px;
+            color: var(--text-muted);
+        }
+
+        .intercept-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Settings Overlay */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .modal {
+            width: 90%;
+            max-width: 600px;
+            padding: 40px;
+        }
+
+        /* Header Navigation & Mega Menu */
+        .header-nav {
+            display: flex;
+            gap: 24px;
+            margin-left: 40px;
+        }
+
+        .nav-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: 0.3s;
+            position: relative;
+            padding: 10px 0;
+        }
+
+        .nav-link:hover {
+            color: var(--primary);
+        }
+
+        .mega-menu {
+            position: absolute;
+            top: 60px;
+            /* Adjusted to prevent gap */
+            background: rgba(15, 23, 42, 0.98);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-glass);
+            border-radius: 16px;
+            padding: 25px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 1001;
+            pointer-events: none;
+            width: 320px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Show specific menu on hover */
+        #link-about:hover~#mega-about,
+        #link-features:hover~#mega-features,
+        #link-contact:hover~#mega-contact,
+        .mega-menu:hover {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        /* Specific positions to align with links */
+        #mega-about {
+            left: 40px;
+        }
+
+        #mega-features {
+            left: 110px;
+        }
+
+        #mega-contact {
+            left: 200px;
+        }
+
+        .mega-column h4 {
+            color: var(--primary);
+            font-size: 0.95rem;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mega-column p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .feature-item i {
+            color: var(--success);
+            font-size: 0.8rem;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar glass">
+        <h2 class="logo" style="font-size: 1.5rem; margin-bottom: 30px;">AI-Sentinel</h2>
+        <nav>
+            <a href="#" class="nav-item active" onclick="showView('chat', event)"><i class="fas fa-comment-dots"></i>
+                Chat</a>
+            <a href="#" class="nav-item" onclick="showView('profile', event)"><i class="fas fa-user-circle"></i>
+                Profile</a>
+            <a href="#" class="nav-item" onclick="showView('history', event)"><i class="fas fa-history"></i> Chat
+                History</a>
+            <a href="#" class="nav-item" onclick="showView('settings', event)"><i class="fas fa-cog"></i> Settings</a>
+        </nav>
+
+        <div style="margin-top: auto; padding-top: 20px;">
+            <div id="userDisplay" style="margin-bottom: 15px; color: var(--text-muted); font-size: 0.9rem;">
+                Logged in as: <span id="userName">User</span>
+            </div>
+            <button onclick="logout()" class="btn-primary"
+                style="width: 100%; background: var(--bg-card); color: var(--danger);">Logout</button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content animate-fade">
+        <header class="chat-header">
+            <div style="display: flex; align-items: center;">
+                <div>
+                    <h3 id="viewTitle">Secure Assistant</h3>
+                    <p id="viewSubtitle" style="font-size: 0.8rem; color: var(--text-muted);">Intercepting: High
+                        Sensitivity
+                        Mode</p>
+                </div>
+                <nav class="header-nav">
+                    <a href="#" class="nav-link" id="link-about">About</a>
+                    <a href="#" class="nav-link" id="link-features">Features</a>
+                    <a href="#" class="nav-link" id="link-contact">Contact</a>
+
+                    <!-- Hover Mega Menus -->
+                    <div class="mega-menu glass" id="mega-about">
+                        <div class="mega-column">
+                            <h4><i class="fas fa-info-circle"></i> About Sentinel</h4>
+                            <p>AI-Sentinel is a private AI gateway designed to prevent data leakage. Built for
+                                organizations and
+                                individuals who require the power of Gemini without compromising confidentiality.</p>
+                            <p style="margin-top: 10px;"><strong>Version:</strong> 1.1.0 (Stable)</p>
+                        </div>
+                    </div>
+
+                    <div class="mega-menu glass" id="mega-features">
+                        <div class="mega-column">
+                            <h4><i class="fas fa-star"></i> Core Features</h4>
+                            <div class="feature-item">
+                                <i class="fas fa-check"></i>
+                                <span><strong>PII Detection:</strong> Intercepts CCs, Emails, and project
+                                    secrets.</span>
+                            </div>
+                            <div class="feature-item">
+                                <i class="fas fa-check"></i>
+                                <span><strong>Encrypted Bridge:</strong> E2E secure requests to AI Studio.</span>
+                            </div>
+                            <div class="feature-item">
+                                <i class="fas fa-check"></i>
+                                <span><strong>User Isolation:</strong> Dedicated history and settings per
+                                    account.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mega-menu glass" id="mega-contact">
+                        <div class="mega-column">
+                            <h4><i class="fas fa-envelope"></i> Contact Support</h4>
+                            <p>Experience any issues? Reach out to our security team:</p>
+                            <p style="margin-top: 10px; color: var(--text-main);">📧 support@sentinel.ai</p>
+                            <div
+                                style="margin-top: 20px; display: flex; gap: 15px; font-size: 1.2rem; color: var(--text-muted);">
+                                <i class="fab fa-github"></i>
+                                <i class="fab fa-discord"></i>
+                                <i class="fab fa-linkedin"></i>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+
+            <div id="attemptTracker"
+                style="background: var(--glass-accent); padding: 5px 12px; border-radius: 20px; font-size: 0.85rem;">
+                Research Attempts Today: <span id="attempts">0</span>
+            </div>
+        </header>
+
+        <!-- Chat View -->
+        <div id="chatView" class="view" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
+            <div class="chat-container" id="chatContainer">
+                <div class="message msg-ai glass">Hello! I am your AI-Sentinel. How can I help you today? I will monitor
+                    your prompts for any confidential information according to your sensitivity settings.</div>
+            </div>
+
+            <div class="typing-area">
+                <div class="input-bar-container">
+                    <textarea id="promptInput" placeholder="Type your message here..."></textarea>
+                    <div class="action-btns">
+                        <i class="fas fa-microphone" title="Voice Input" onclick="simulateVoice()"></i>
+                        <input type="file" id="fileInput" style="display: none;">
+                        <i class="fas fa-paperclip" id="attachBtn" title="Attach Audio/File"></i>
+                        <button id="sendBtn" class="btn-primary" style="padding: 8px 16px;"><i
+                                class="fas fa-paper-plane"></i></button>
+                    </div>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center;">
+                    Securely connected to Gemini AI via End-to-End Encryption.
+                </div>
+            </div>
+        </div>
+
+        <!-- Other Views (History, Settings, Profile) -->
+        <div id="otherViews" class="view glass"
+            style="display: none; flex: 1; margin: 40px; padding: 40px; overflow-y: auto;">
+            <h2 id="otherTitle">Profile Information</h2>
+            <div id="otherContent" style="margin-top: 20px;"></div>
+            <button class="btn-primary" onclick="showView('chat')" style="margin-top: 20px;">Back to Chat</button>
+        </div>
+
+        <!-- Interceptor Modal -->
+        <div id="interceptor">
+            <div class="intercept-card glass animate-fade">
+                <i class="fas fa-shield-alt" style="font-size: 3rem; color: var(--danger); margin-bottom: 20px;"></i>
+                <h2>PROMPT INTERCEPTED</h2>
+                <p id="interceptReason">Sensitive data detected: [Credit Card Number]. Sharing this information with an
+                    AI is against security policy.</p>
+                <div class="intercept-actions">
+                    <button class="btn-primary" onclick="handleIntercept('edit')">Fix Prompt Manually</button>
+                    <button class="btn-primary" style="background: var(--warning);"
+                        onclick="handleIntercept('enhance')">Allow AI Enhancement (Auto-Mask)</button>
+                    <button class="btn-primary" style="background: var(--bg-card); color: var(--text-muted);"
+                        onclick="handleIntercept('cancel')">Cancel & Delete Prompt</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="sensitivity.js"></script>
+    <script src="chat.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
